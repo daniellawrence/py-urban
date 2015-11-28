@@ -14,12 +14,8 @@ requests_logger = logging.getLogger("requests")
 requests_logger.setLevel(logging.WARNING)
 
 
-def get_random_word():
-    random_url = "http://www.urbandictionary.com/random.php"
-
-    logging.debug("Getting random word from {0}".format(random_url))
-    word_html = requests.get(random_url).text
-    soup = bs4.BeautifulSoup(word_html, "html.parser")
+def process_word_html(raw_html):
+    soup = bs4.BeautifulSoup(raw_html, "html.parser")
 
     word = {}
     for i in soup.find_all('a'):
@@ -60,6 +56,32 @@ def get_random_word():
     return word
 
 
+def get_random_word():
+    random_url = "http://www.urbandictionary.com/random.php"
+
+    logging.debug("Getting random word from {0}".format(random_url))
+    word_html = requests.get(random_url).text
+    return process_word_html(word_html)
+
+
+def get_words(words):
+    word_list = []
+    for word in words:
+        word_list.append(get_word(word))
+
+    out_file = "/tmp/urbandict_{0}.json".format(",".join(words))
+    logging.info("Writing output as {0}".format(out_file))
+    with open(out_file, 'w') as f:
+        f.write(json.dumps(word_list, indent=4))
+
+
+def get_word(word):
+    single_url = "http://www.urbandictionary.com/define.php?term={0}".format(word)
+    word_html = requests.get(single_url).text
+    word_dict = process_word_html(word_html)
+    return word_dict
+
+
 def get_n_random_words(number_of_words=10, min_upvotes=MIN_UPVOTES):
     words = [get_random_word() for _ in range(int(number_of_words))]
 
@@ -84,6 +106,10 @@ if __name__ == '__main__':
                         help="Number of random words to get")
     parser.add_argument('--votes', '-u', dest='min_upvotes', default=200,
                         help="Required number of upvotes")
+    parser.add_argument('words', nargs='*', help="Define a word")
 
     args = parser.parse_args()
-    get_n_random_words(int(args.number_of_words), args.min_upvotes)
+    if args.words:
+        get_words(args.words)
+    else:
+        get_n_random_words(int(args.number_of_words), args.min_upvotes)
