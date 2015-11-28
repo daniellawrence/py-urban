@@ -1,82 +1,89 @@
 #!/usr/bin/env python
-#
-# Simple interface to urbandictionary.com
-#
-# Author: Roman Bogorodskiy <bogorodskiy@gmail.com>
-
-import sys
-
-if sys.version < '3':
-    from urllib import quote as urlquote
-    from urllib2 import urlopen
-    from HTMLParser import HTMLParser
-else:
-    from urllib.request import urlopen
-    from urllib.parse import quote as urlquote
-    from html.parser import HTMLParser
+import json
+import logging
+import requests
+import bs4
 
 
-class TermType(object):
-    pass
+MAX_LENGTH = 250
+MIN_UPVOTES = 200
 
 
-class TermTypeRandom(TermType):
-    pass
+logging.basicConfig(level=logging.INFO)
+requests_logger = logging.getLogger("requests")
+requests_logger.setLevel(logging.WARNING)
 
 
-class UrbanDictParser(HTMLParser):
+def get_random_word():
+    random_url = "http://www.urbandictionary.com/random.php"
 
-    def __init__(self, *args, **kwargs):
-        HTMLParser.__init__(self, *args, **kwargs)
-        self._section = None
-        self.translations = []
+    logging.debug("Getting random word from {0}".format(random_url))
+    word_html = requests.get(random_url).text
+    soup = bs4.BeautifulSoup(word_html, "html.parser")
 
-    def handle_starttag(self, tag, attrs):
-        attrs_dict = dict(attrs)
+    word = {}
+    for i in soup.find_all('a'):
+        if 'class' not in i.attrs:
+            continue
+        tags = set(i.attrs['class']) & set(['up', 'down', 'word'])
+        if not tags:
+            continue
+        tag = "".join(tags)
+        text = i.text.strip()
+        if tag in word:
+            continue
+        if tag in ('up', 'down'):
+            text = int(text)
+        word[tag] = text
 
-        if tag != "div":
-            return
+    for i in soup.find_all('div'):
+        if 'class' not in i.attrs:
+            continue
+        tags = set(i.attrs['class']) & set(['meaning', 'example'])
+        if not tags:
+            continue
 
-        div_class = attrs_dict.get('class')
-        if div_class in ('def-header', 'meaning', 'example'):
-            self._section = div_class
-            if div_class == 'def-header':  # NOTE: assume 'word' is the first section
-                self.translations.append(
-                    {'word': '', 'def': '', 'example': ''})
+        tag = "".join(tags)
+        text = ""
+        sentences = i.text.strip().split('.')
+        for sentence in sentences:
+            sentence_length = len(sentence)
+            if len(text) + sentence_length > MAX_LENGTH:
+                continue
+            text += "  " + sentence
 
-    def handle_endtag(self, tag):
-        if tag == 'div':
-            #NOTE: assume there is no nested <div> in the known sections
-            self._section = None
+        if tag in word:
+            continue
 
-    def handle_data(self, data):
-        if not self._section:
-            return
-
-        if self._section == 'meaning':
-            self._section = 'def'
-        elif self._section == 'def-header':
-            data = data.strip()
-            self._section = 'word'
-
-        self.translations[-1][self._section] += normalize_newlines(data)
+        word[tag] = text
+    logging.info("Processed word '{0}'".format(word['word']))
+    return word
 
 
-def normalize_newlines(text):
-    return text.replace('\r\n', '\n').replace('\r', '\n')
+def get_n_random_words(number_of_words=10, min_upvotes=MIN_UPVOTES):
+    words = [get_random_word() for _ in range(int(number_of_words))]
+
+    good_words = []
+    for word in words:
+        if word['up'] < int(min_upvotes):
+            logging.debug("Skipping {0[word]} as upvotes={0[up]} < required={1}".format(word, min_upvotes))
+            continue
+        good_words.append(word)
+        continue
+
+    out_file = "/tmp/urbandict_{0}_words.json".format(number_of_words)
+    logging.info("Writing output as {0}".format(out_file))
+    with open(out_file, 'w') as f:
+        f.write(json.dumps(good_words, indent=4))
 
 
-def define(term):
-    if isinstance(term, TermTypeRandom):
-        url = "http://www.urbandictionary.com/random.php"
-    else:
-        url = "http://www.urbandictionary.com/define.php?term=%s" % \
-              urlquote(term)
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Make a json file of random urbandict words.')
+    parser.add_argument('--words', '-w', dest='number_of_words', default=10,
+                        help="Number of random words to get")
+    parser.add_argument('--votes', '-u', dest='min_upvotes', default=200,
+                        help="Required number of upvotes")
 
-    f = urlopen(url)
-    data = f.read().decode('utf-8')
-
-    urbanDictParser = UrbanDictParser()
-    urbanDictParser.feed(data)
-
-    return urbanDictParser.translations
+    args = parser.parse_args()
+    get_n_random_words(int(args.number_of_words), args.min_upvotes)

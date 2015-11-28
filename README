@@ -3,43 +3,25 @@ py-urbandict
 
 py-urbandict is a client for urbandictionary.com.
 
-Project page on github: https://github.com/novel/py-urbandict
-
-Installation
-------------
-
-Just run:
-
-  sudo setup.py install
+Projectf forked from https://github.com/novel/py-urbandict
 
 Usage
-__________
-To use it from command line, just use 'urbancli' tool like that:
+------
 
-$ urbandicli xterm
-1. xterm
-  Godly creature, omnipotent, guru in every way imaginable.
-  
-  Examples:
-  
-  * I wish i was an xterm
+Get a sinle word as dict()
+
+	>>> import urbandict
+	>>> dir(urbandict)
+	['MAX_LENGTH', 'MIN_UPVOTES', '__builtins__', '__doc__', '__file__', '__name__', '__package__', 'bs4', 'get_n_random_words', 'get_random_word', 'json', 'logging', 'requests', 'requests_logger']
+	>>> urbandict.get_random_word()
+	INFO:root:Processed word 'hindsight'
+	{u'down': 21, u'meaning': u'  Recognition of the realities, possibilities of events, situations,decisions etc     after they have occurred', u'word': u'hindsight', u'up': 140, u'example': u'  In hindsight, we should have acted differently when Chris told us he was gay, now hes not talking to us  '}
 
 
-$
+Get a number of words, and write it to a file
 
-Usage from Python:
+	>>> urbandict.get_n_random_words(2)
+	INFO:root:Processed word 'base jumping'
+	INFO:root:Processed word 'Clingy'
+	INFO:root:Writing output as /tmp/urbandict_2_words.json
 
-$ python3.2
-Python 3.2 (r32:88445, Feb 27 2011, 09:51:00) 
-[GCC 4.2.1 20070719  [FreeBSD]] on freebsd8
-Type "help", "copyright", "credits" or "license" for more information.
->>> import urbandict
->>> urbandict.define('xterm')
-[{'word': 'xterm', 'example': 'I wish i was an xterm', 'def': 'Godly creature, omnipotent, guru in every way imaginable.'}]
->>> 
-
-It returns list of defitinitions for a term. Each list item is a dict with the following keys:
-
- * word -- the word itself
- * def -- definition of the term
- * example -- example of its usage (could be empty)
