@@ -46,13 +46,15 @@ def process_word_html(raw_html):
             sentence_length = len(sentence)
             if len(text) + sentence_length > MAX_LENGTH:
                 continue
-            text += "  " + sentence
+            text += "\n" + sentence.strip()
 
         if tag in word:
             continue
 
         word[tag] = text
     logging.info("Processed word '{0}'".format(word['word']))
+    word['example'] = word['example'].strip()
+    word['meaning'] = word['meaning'].strip()
     return word
 
 
@@ -73,6 +75,7 @@ def get_words(words):
     logging.info("Writing output as {0}".format(out_file))
     with open(out_file, 'w') as f:
         f.write(json.dumps(word_list, indent=4))
+    return word_list
 
 
 def get_word(word):
@@ -97,6 +100,7 @@ def get_n_random_words(number_of_words=10, min_upvotes=MIN_UPVOTES):
     logging.info("Writing output as {0}".format(out_file))
     with open(out_file, 'w') as f:
         f.write(json.dumps(good_words, indent=4))
+    return good_words
 
 
 if __name__ == '__main__':
@@ -106,10 +110,16 @@ if __name__ == '__main__':
                         help="Number of random words to get")
     parser.add_argument('--votes', '-u', dest='min_upvotes', default=200,
                         help="Required number of upvotes")
+    parser.add_argument('--show', dest='show', default=False, action='store_true',
+                        help="Print the word to stdou")
     parser.add_argument('words', nargs='*', help="Define a word")
 
     args = parser.parse_args()
     if args.words:
-        get_words(args.words)
+        words = get_words(args.words)
     else:
-        get_n_random_words(int(args.number_of_words), args.min_upvotes)
+        words = get_n_random_words(int(args.number_of_words), args.min_upvotes)
+
+    if args.show:
+        for word in words:
+            print "{word:<30}  ^{up} v{down}\n--------------------------------------\n{meaning}\n\n{example}\n\n".format(**word)
