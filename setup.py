@@ -4,11 +4,10 @@ setup(
     name='urbandict',
     version='0.4',
     py_modules=['urbandict'],
-    scripts=['urbandicli'],
     author='Daniel Lawrence',
     author_email='dannyla@linux.com',
     description='CLI client and a library for urbandictionary.com',
-    url='https://github.com/daniellawrence/py-urbandict',
+    url='https://github.com/daniellawrence/py-urban',
     classifiers=[
         "Environment :: Console",
         "Intended Audience :: End Users/Desktop",
